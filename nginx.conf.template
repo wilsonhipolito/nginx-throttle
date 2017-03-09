@@ -1,0 +1,22 @@
+user nginx;
+worker_processes 1;
+error_log /var/log/nginx/error.log;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections ${WORKER_CONNECTIONS};
+    use epoll;
+    multi_accept on;
+}
+
+http {
+
+    sendfile            on;
+    tcp_nopush          on;
+    tcp_nodelay         on;
+
+    include             /etc/nginx/mime.types;
+    default_type        application/octet-stream;
+
+    include /etc/nginx/conf.d/*.conf;
+}

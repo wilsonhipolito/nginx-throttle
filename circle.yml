@@ -1,0 +1,32 @@
+machine:
+  services:
+  - docker
+
+dependencies:
+  override:
+    - docker login -e $DOCKER_EMAIL -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+    - docker build -t vivareal/nginx-throttle .
+
+test:
+  override:
+    - docker run -d --name backend nginx:1.11.10-alpine
+    - docker run -d --name nginx-throttle --link backend -e NGINX_BACKEND_ENDPOINT="backend" -p 80:80 vivareal/nginx-throttle
+    - wget -S localhost
+
+deployment:
+  master:
+    branch: master
+    commands:
+      - docker tag vivareal/nginx-throttle vivareal/nginx-throttle:master
+      - docker push vivareal/nginx-throttle:master
+  hub:
+    tag: /^v[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc)\.[0-9]+$/
+    commands:
+      - docker tag vivareal/nginx-throttle vivareal/nginx-throttle:$CIRCLE_TAG
+      - docker push vivareal/nginx-throttle:$CIRCLE_TAG
+  stable:
+    tag: /^v[0-9]+\.[0-9]+\.[0-9]+$/
+    commands:
+      - docker tag vivareal/nginx-throttle vivareal/nginx-throttle:$CIRCLE_TAG
+      - docker push vivareal/nginx-throttle:$CIRCLE_TAG
+      - docker push vivareal/nginx-throttle:latest
