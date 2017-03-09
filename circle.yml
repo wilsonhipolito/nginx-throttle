@@ -10,7 +10,7 @@ dependencies:
 test:
   override:
     - docker run -d --name backend nginx:1.11.10-alpine
-    - docker run -d --name nginx-throttle --link backend -e NGINX_BACKEND_ADDR=backend -e NGINX_BACKEND_PORT=80 -p 80:80 vivareal/nginx-throttle
+    - docker run -d --name nginx-throttle --link backend -e NGINX_BACKEND_ENDPOINT="backend" -p 80:80 vivareal/nginx-throttle
     - wget -S localhost
 
 deployment:
