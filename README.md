@@ -36,10 +36,8 @@ spec:
   - name: nginx
     image: vivareal/nginx-throttle:latest
     env:
-      - name: NGINX_BACKEND_ADDR
-        value: "localhost"
-      - name: NGINX_BACKEND_PORT
-        value: "3000"
+      - name: NGINX_BACKEND_ENDPOINT
+        value: "localhost:3000"
       - name: NGINX_THROTTLE_RATE_LIMIT
         value: "200r/s"
       - name: NGINX_SET_NODELAY
@@ -80,8 +78,7 @@ services:
      ports:
        - "80:80"
      environment:
-       NGINX_BACKEND_ADDR: myapp
-       NGINX_BACKEND_PORT: 3000
+       NGINX_BACKEND_ENDPOINT: "myapp:3000"
        NGINX_THROTTLE_RATE_LIMIT: "200r/s"
        NGINX_SET_NODELAY: true
 ```
@@ -94,44 +91,44 @@ docker run -d --name=myapp -p 3000:3000 myapp-image
 ```
 Now start the `nginx-throttle` with a link to your app:
 ```
-docker run -d --name=nginx --link myapp -p 80:80  -e NGINX_THROTTLE_RATE_LIMIT="200r/m" -e NGINX_BACKEND_ADDR=myapp -e NGINX_BACKEND_PORT=3000 -e NGINX_SET_NODELAY=true vivareal/nginx-throttle:latest
+docker run -d --name=nginx --link myapp -p 80:80  -e NGINX_THROTTLE_RATE_LIMIT="200r/m" -e NGINX_BACKEND_ENDPOINT="myapp:3000" -e NGINX_SET_NODELAY=true vivareal/nginx-throttle:latest
 ```
 
 ## Configuration
 
 All settings are passed by environment variables:
 
-|Variable|Default value|Required|
-|--------|-------------|--------|
-|NGINX_BACKEND_ADDR| - | **YES** |
-|NGINX_BACKEND_PORT| - | **YES** |
-|NGINX_LISTEN_PORT| `80` | No |
-|NGINX_SET_NODELAY| `false` | No |
-|NGINX_THROTTLE_BURST|`10`| No|
-|NGINX_THROTTLE_MEM_LIMIT| `10m`| No|
-|NGINX_THROTTLE_RATE_LIMIT| `100r/s` | No |
+|Variable                 |Default value|Required|
+|-------------------------|-------------|--------|
+|NGINX_BACKEND_ENDPOINT   |-            |**YES** |
+|NGINX_LISTEN_PORT        |`80`         | No     |
+|NGINX_PROXY_TIMEOUT      |`90`         | No     |
+|NGINX_SET_NODELAY        |`false`      | No     |
+|NGINX_THROTTLE_BURST     |`10`         | No     |
+|NGINX_THROTTLE_MEM_LIMIT |`10m`        | No     |
+|NGINX_THROTTLE_RATE_LIMIT|`100r/s`     | No     |
+|NGINX_WORKER_CONNECTIONS |`4096`       | No     |
 
 ### Details
 
-##### NGINX_BACKEND_ADDR
+##### NGINX_BACKEND_ENDPOINT
 - This is a required setting.
 - Value type is _string_.
 - There is no default value for this setting.
 
-Set the address of your app for Nginx proxy pass. This can be the DNS record, IP address, the container name or `localhost`.
-
-##### NGINX_BACKEND_PORT
-- This is a required setting.
-- Value type is _number_.
-- There is no default value for this setting.
-
-Set the port where your app is listening Eg.: `8080`.
+Set the address of your app for Nginx proxy pass. The format is `<addr>:<port>` E.g.: _localhost:3000_
 
 ##### NGINX_LISTEN_PORT
 - Value type is _number_.
 - Default value is `80`.
 
 Set the port where Nginx should listen on.
+
+##### NGINX_PROXY_TIMEOUT
+- Value type is _number_.
+- Default value is `90`.
+
+Number in seconds for proxy timeout.
 
 ##### NGINX_SET_NODELAY
 - Value type is _boolean_.
@@ -156,3 +153,9 @@ Set the size of memory where the states are kept. In particular, the state store
 - Default value is `100r/s`.
 
 Set the maximum rate of requests. The rate is specified in requests per second (r/s). If a rate of less than one request per second is desired, it is specified in request per minute (r/m). For example, half-request per second is 30r/m.
+
+##### NGINX_WORKER_CONNECTIONS
+- Value type is _number_.
+- Default value is `4096`.
+
+Set the number of connections that nginx worker can handle.
