@@ -11,4 +11,13 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_read_timeout ${PROXY_TIMEOUT};
     }
+    # Turn on status information, only allowing private network access.
+    location /nginx_status {
+        stub_status;
+        allow 10.0.0.0/8;
+        allow 172.16.0.0/12;
+        allow 192.168.0.0/16;
+        allow 127.0.0.0/8;
+        deny  all;
+    }
 }
