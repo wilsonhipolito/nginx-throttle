@@ -1,14 +1,16 @@
 limit_req_zone $http_x_forwarded_for zone=one:${ZONE_MEMORY} rate=${RATE_LIMIT};
 
 server {
-    listen  ${LISTEN_PORT};
-    location / {
-        limit_req zone=one burst=${BURST} ${NODELAY};
-        proxy_pass https://${APPLICATION_ENDPOINT};
-				proxy_ssl_server_name on;
-				proxy_set_header Host ${APPLICATION_ENDPOINT};
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_read_timeout ${PROXY_TIMEOUT};
-    }
+	listen  ${LISTEN_PORT};
+	location / {
+		resolver 8.8.8.8 ipv6=off;
+		set $empty "";
+		limit_req zone=one burst=${BURST} ${NODELAY};
+		proxy_pass https://${APPLICATION_ENDPOINT}${empty};
+		proxy_ssl_server_name on;
+		proxy_set_header Host ${APPLICATION_ENDPOINT};
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_read_timeout ${PROXY_TIMEOUT};
+	}
 }
