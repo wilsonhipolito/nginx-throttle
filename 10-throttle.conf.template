@@ -2,6 +2,8 @@ limit_req_zone $http_x_forwarded_for zone=one:${ZONE_MEMORY} rate=${RATE_LIMIT};
 
 server {
 	listen 0.0.0.0:${LISTEN_PORT};
+	server_name ${SERVICE_HOSTNAME};
+
 	location / {
 		resolver 8.8.8.8 ipv6=off;
 		set $empty "";
