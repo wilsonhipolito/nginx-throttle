@@ -1,5 +1,5 @@
 FROM nginx:1.11.10-alpine
-RUN  apk --update add bash vim
+RUN  apk --update add bash vim curl
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
 COPY 10-throttle.conf.template /etc/nginx/conf.d/10-throttle.conf.template
 COPY sysctl.conf.template /etc/sysctl.conf
