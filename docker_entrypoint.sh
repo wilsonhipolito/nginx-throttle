@@ -1,24 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-if ! [[  $NGINX_BACKEND_ENDPOINT ]] ; then
-  echo "You must define NGINX_BACKEND_ENDPOINT variable!"
-  exit 1
-fi
-if [[ $NGINX_SET_NODELAY -eq "true" ]] ; then
-  export NODELAY="nodelay"
-fi
 export ZONE_MEMORY=${NGINX_THROTTLE_MEM_LIMIT:-10m}
 export RATE_LIMIT=${NGINX_THROTTLE_RATE_LIMIT:-100r\/s}
 export LISTEN_PORT=${NGINX_LISTEN_PORT:-80}
 export BURST=${NGINX_THROTTLE_BURST:-10}
-export APPLICATION_ENDPOINT=${NGINX_BACKEND_ENDPOINT}
 export PROXY_TIMEOUT=${NGINX_PROXY_TIMEOUT:-90}
 export WORKER_CONNECTIONS=${NGINX_WORKER_CONNECTIONS:-4096}
-export SERVICE_HOSTNAME=${NGINX_SERVICE_HOSTNAME:-netfeedr-ratelimit-proxy}
-
-echo "Env variable declared : "
-env
-echo "-----"
 
 if [[ -v NGINX_LISTEN_HOST ]]; then
 	# it is set, but could be empty
@@ -39,6 +26,27 @@ fi
 
 export LISTEN_HOST
 
-envsubst '${ZONE_MEMORY} ${RATE_LIMIT} ${LISTEN_HOST} ${LISTEN_PORT} ${BURST} ${APPLICATION_ENDPOINT} ${NODELAY} ${PROXY_TIMEOUT} ${SERVICE_HOSTNAME}' < /etc/nginx/conf.d/10-throttle.conf.template > /etc/nginx/conf.d/default.conf
-envsubst '${WORKER_CONNECTIONS}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
-nginx -g "daemon off;"
+RESOLVER_IP="$(cat /etc/resolv.conf | grep -v '^#' | grep nameserver | awk '{print $2}' | head -n 1)"
+export RESOLVER_IP
+
+echo "Env variable declared : "
+env
+echo "-----"
+
+echo "Copying template using envsubst using defined environment variables"
+envsubst '${RESOLVER_IP} ${ZONE_MEMORY} ${RATE_LIMIT} ${LISTEN_HOST} ${LISTEN_PORT} ${BURST} ${PROXY_TIMEOUT}' \
+	< /app/10-throttle.conf.template \
+	> /usr/local/nginx/conf/default.conf
+
+envsubst '${WORKER_CONNECTIONS}' \
+	< /app/nginx.conf.template \
+	> /usr/local/nginx/conf/nginx.conf
+
+cp /app/sysctl.conf.template /etc/sysctl.conf
+
+mkdir -p /var/log/nginx
+touch /var/log/nginx/error.log
+
+# Start the nginx process
+echo "Starting the tengine nginx daemon"
+ /usr/local/nginx/sbin/nginx -g "daemon off;"

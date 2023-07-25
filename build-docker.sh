@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 VERSION=$1
 EXTRA_PARAMS=$2
 MODULE=nginx-throttle
