@@ -1,61 +1,7 @@
 # Nginx Throttle
 
-A simple Docker container with Nginx reverse proxy for Apps that are behind an **AWS ELB** and need to throttle HTTP requests.
+A simple Docker container with TEngine as a forward proxy to rate limit http(s) requests
 
-Reference: http://nginx.org/en/docs/http/ngx_http_limit_req_module.html
-## Usage
-
-### Inside a POD file
-
-```
-apiVersion: v1
-kind: Pod
-metadata:
-  name: myapp
-spec:
-  hostNetwork: true
-  containers:
-  - name: myapp
-    image: myapp-image
-    env:
-      - name: MY_APP_VAR
-        value: "my app value"
-    ports:
-    - containerPort: 3000
-      protocol: TCP
-    livenessProbe:
-      failureThreshold: 3
-      httpGet:
-        path: /health
-        port: 3000
-        scheme: HTTP
-      initialDelaySeconds: 30
-      periodSeconds: 10
-      successThreshold: 1
-      timeoutSeconds: 5
-  - name: nginx
-    image: vivareal/nginx-throttle:latest
-    env:
-      - name: NGINX_BACKEND_ENDPOINT
-        value: "localhost:3000"
-      - name: NGINX_THROTTLE_RATE_LIMIT
-        value: "200r/s"
-      - name: NGINX_SET_NODELAY
-        value: "true"
-    ports:
-    - containerPort: 80
-      protocol: TCP
-    livenessProbe:
-      failureThreshold: 3
-      httpGet:
-        path: /health
-        port: 80
-        scheme: HTTP
-      initialDelaySeconds: 30
-      periodSeconds: 10
-      successThreshold: 1
-      timeoutSeconds: 5
-```
 
 ### Docker compose
 
@@ -63,60 +9,52 @@ spec:
 version: '2'
 
 services:
-   myapp:
-     image: myapp-image
+   nginx-rate-limiter:
+     image: nxlogy/nginx-throttle:latest
      restart: always
      ports:
        - "3000:3000"
      environment:
-       MY_APP_VAR: "my app value"
-
-   nginx:
-     depends_on:
-       - myapp
-     image: vivareal/nginx-throttle:latest
-     ports:
-       - "80:80"
-     environment:
-       NGINX_BACKEND_ENDPOINT: "myapp:3000"
        NGINX_THROTTLE_RATE_LIMIT: "200r/s"
-       NGINX_SET_NODELAY: true
+			 NGINX_THROTTLE_BURST: "500"
+			 NGINX_LISTEN_HOST: ""
+			 NGINX_LISTEN_PORT: "3000"
 ```
 
 ### Just Docker
 
-Start your app:
+Start the `nginx-throttle` with a link to your app:
 ```
-docker run -d --name=myapp -p 3000:3000 myapp-image
-```
-Now start the `nginx-throttle` with a link to your app:
-```
-docker run -d --name=nginx --link myapp -p 80:80  -e NGINX_THROTTLE_RATE_LIMIT="200r/m" -e NGINX_BACKEND_ENDPOINT="myapp:3000" -e NGINX_SET_NODELAY=true vivareal/nginx-throttle:latest
+docker run \
+	-d \
+	--rm \
+	--name=nginx-rate-limiter \
+	-p 80:80 \
+	-e NGINX_THROTTLE_RATE_LIMIT="200r/m" \
+	nxlogy/nginx-throttle:latest
 ```
 
 ## Configuration
 
 All settings are passed by environment variables:
 
-|Variable                 |Default value|Required|
-|-------------------------|-------------|--------|
-|NGINX_BACKEND_ENDPOINT   |-            |**YES** |
-|NGINX_LISTEN_PORT        |`80`         | No     |
-|NGINX_PROXY_TIMEOUT      |`90`         | No     |
-|NGINX_SET_NODELAY        |`false`      | No     |
-|NGINX_THROTTLE_BURST     |`10`         | No     |
-|NGINX_THROTTLE_MEM_LIMIT |`10m`        | No     |
-|NGINX_THROTTLE_RATE_LIMIT|`100r/s`     | No     |
-|NGINX_WORKER_CONNECTIONS |`4096`       | No     |
+|Variable                  |Default value|Required|
+|--------------------------|-------------|--------|
+|NGINX_THROTTLE_MEM_LIMIT  |`10m`        | No     |
+|NGINX_THROTTLE_RATE_LIMIT |`100r/s`     | No     |
+|NGINX_THROTTLE_BURST      |`10`         | No     |
+|NGINX_PROXY_TIMEOUT       |`90`         | No     |
+|NGINX_WORKER_CONNECTIONS  |`4096`       | No     |
+|NGINX_LISTEN_HOST         |`0.0.0.0`    | No     |
+|NGINX_LISTEN_PORT         |`80`         | No     |
 
 ### Details
 
-##### NGINX_BACKEND_ENDPOINT
-- This is a required setting.
+##### NGINX_LISTEN_HOST
 - Value type is _string_.
-- There is no default value for this setting.
+- Default value is `0.0.0.0`.
 
-Set the address of your app for Nginx proxy pass. The format is `<addr>:<port>` E.g.: _localhost:3000_
+If specified as empty (""), it will not be specified in the nginx configs.
 
 ##### NGINX_LISTEN_PORT
 - Value type is _number_.
@@ -129,12 +67,6 @@ Set the port where Nginx should listen on.
 - Default value is `90`.
 
 Number in seconds for proxy timeout.
-
-##### NGINX_SET_NODELAY
-- Value type is _boolean_.
-- Default value is `false`.
-
-Set to `true` if you want Nginx to drop requests instead of delaying excessive requests.
 
 ##### NGINX_THROTTLE_BURST
 - Value type is _number_.
