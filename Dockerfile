@@ -5,8 +5,6 @@ FROM alpine:3.17
 # Add all useful utilitaries for maintenance
 RUN apk --update add bash vim curl gettext wget
 
-run apk add parallel
-
 # Create directory to have our custom scripts and template
 RUN mkdir -p /app
 WORKDIR /app

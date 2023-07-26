@@ -5,20 +5,16 @@ error_log /dev/stdout error;
 pid /var/run/nginx.pid;
 
 events {
-    worker_connections ${WORKER_CONNECTIONS};
-    # use epoll;
-    # multi_accept on;
+	worker_connections ${WORKER_CONNECTIONS};
 }
 
 http {
-    sendfile            on;
-    # tcp_nopush          on;
-    # tcp_nodelay         on;
+	sendfile            on;
+	
+	access_log /dev/stdout;
 
-		access_log /dev/stdout;
+	include             /usr/local/nginx/conf/mime.types;
+	default_type        application/octet-stream;
 
-    include             /usr/local/nginx/conf/mime.types;
-    default_type        application/octet-stream;
-
-    include /usr/local/nginx/conf/default.conf;
+	include /usr/local/nginx/conf/default.conf;
 }

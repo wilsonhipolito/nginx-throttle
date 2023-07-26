@@ -1,31 +1,62 @@
+# Context : http
+
+# Global request rate limiting according to configurations
+#
+# limit_req_zone http://nginx.org/en/docs/http/ngx_http_limit_req_module.html#limit_req_zone
+# Syntax:	limit_req_zone key zone=name:size rate=rate [sync];
+# Context:	http
+#
+# Parameters
+# - key : name of the zone to use to keep track of the rate of request coming in. 
+#         Can be a dynamic name when tracking rate by some factor or a static name when tracking the rate globally.
+# - zone name : the name of the zone to use as a reference by the limit_req directive, should be a static name.
+# - zone size : declaration of the memory allocation to make to this zone.(ex.: 10m)
+# - rate : The rate allowed for this request zone. Can be a rate per second (ex.: 5r/s) or per minutes (10r/m)
+#          If the case of a rate per minute, a ratio will be done and requests will be allowed at the specified rate, instead of a queue with limited slots.
+#          If you put 2r/m, it means 1 request will be executed every 30 seconds, not up to 2 requests will be executed within the minute.
+#          Unless other options in limit_req are used.
+#
 limit_req_zone only_one zone=one:${ZONE_MEMORY} rate=${RATE_LIMIT};
+
+
+# Setting up the burst and delay parameters for the request limit related to the request limit zone
+#
+# limit_req http://nginx.org/en/docs/http/ngx_http_limit_req_module.html#limit_req
+# Syntax:	limit_req zone=name [burst=number] [nodelay | delay=number];
+# Default:	—
+# Context:	http, server, location
+#
+# Parameters
+# - zone : name of the zone for which this would applied on
+# - burst : amount of queries that will be put into a waiting queue if more request comes in than the rate limit would allow during the period
+# - delay : if specified, the burst requests will be executed right away,
+#           and the amount specified here will be used as another queue for making request wait instead of being denied.
+#           Instead of having "Immediate queue" and "Waiting queue", you end up with "Immediate queue", "Slower queue", and "Waiting queue".
+# - nodelay : if specified, will have the requests that comes in be executed right away 
+#             if there is still room withing the current period according to the specified rate, 
+#             instead of having them being executed at a static pace.
+#             This option is useful if you want to impose a rate limit without constraining the allowed spacing between requests.
+#             Example : with a rate of 10r/m, without "nodelay" it would allow 1 request every 6 seconds. 
+#               Any request that comes after this one but before the next interval will be rejected.
+#
 limit_req zone=one burst=${BURST} nodelay;
 
-limit_req_zone $binary_remote_addr zone=two:${ZONE_MEMORY} rate=1r/s;
+# Limit request zone for the nginx status endpoint
+limit_req_zone second_zone zone=two:10m rate=1r/s;
 
 server {
 	listen ${LISTEN_HOST}${LISTEN_PORT};
 	
-
-	# forward proxy for CONNECT request
+	# Use the revolver provided, obtained from /etc/resolv.conf
 	resolver ${RESOLVER_IP} ipv6=off;
 	resolver_timeout 5s;
 
+	# forward proxy for CONNECT request
 	proxy_connect;
 	proxy_connect_allow            all;
 	proxy_connect_connect_timeout  10s;
 	proxy_connect_read_timeout     10s;
 	proxy_connect_send_timeout     10s;
-
-	location / {
-		proxy_pass https://$host;
-		
-		proxy_set_header Host $host;
-		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-		proxy_set_header X-Real-IP $remote_addr;
-		proxy_ssl_server_name on;
-		proxy_read_timeout ${PROXY_TIMEOUT};
-	}
 
 	# Turn on status information, only allowing private network access.
 	location /nginx_status {
